@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRAKEN X: TORS VREDE (1961) — WebGL 2.5D/3D</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Oswald:wght@500;700&family=Special+Elite&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <header id="top-bar">
+        <div class="bar-left">
+            <span class="badge-secret">STRÄNGT HEMLIGT // 1961</span>
+            <span class="game-title">DRAKEN X: TORS VREDE</span>
+            <span class="engine-tag">[WebGL 2.5D/3D Panoramamotor]</span>
+        </div>
+        <div class="bar-right">
+            <button id="btn-toggle-voice" class="retro-btn">🔊 TAL: PÅ</button>
+            <button id="btn-toggle-sfx" class="retro-btn">🎵 LJUD: PÅ</button>
+            <button id="btn-toggle-fx" class="retro-btn">🎬 FILM-FILTER: PÅ</button>
+            <select id="dev-scene-select" class="retro-select">
+                <option value="scene0_intro">Prolog: Katanga & Ndola 1961 (3D)</option>
+                <option value="scene1_boyroom">Övre plan: Pojkrummet "Mitt rum" (Start)</option>
+                <option value="villa_ovre_hall">Övre plan: Övre Hall (Sybordet med filmrullen)</option>
+                <option value="villa_tvrum">Övre plan: TV- & Musikrum (Tjock-TV & Ball Chair)</option>
+                <option value="villa_mitt_sovrum">Övre plan: Röda Arbetsrummet (Facit)</option>
+                <option value="villa_bad_uppe">Övre plan: Badrummet (Muggen)</option>
+                <option value="villa_krypin">Övre plan: "Mitt krypin" (Hobbybänken)</option>
+                <option value="scene1_villa">Bottenplan: Hall & Vardagsrum (Taxen Sputnik)</option>
+                <option value="villa_kok">Bottenplan: Berså-Köket (Morsan & Raketosten)</option>
+                <option value="villa_matsal">Bottenplan: Finrum & Matsal (Cado & Pollock)</option>
+                <option value="villa_gastrum">Bottenplan: Föräldrasovrummet (Ljuskrona & Franslampa)</option>
+                <option value="villa_kallare_hall">Källarplan: Gillestuga (Elvis, Sifon & Strutlampa)</option>
+                <option value="villa_morkrum">Källarplan: Mörkrummet (Framkallning)</option>
+                <option value="villa_tvatt_pannrum">Källarplan: Pannrum & Ritbordet</option>
+                <option value="villa_tagbana">Källarplan: Hobby & "Min tågbana" (Märklin)</option>
+                <option value="scene2_gate">Scen 2: SAAB-grinden & Bultens Cheva -57</option>
+            </select>
+        </div>
+    </header>
+
+    <main id="viewport-wrapper">
+        <div id="game-frame">
+            <canvas id="webgl-canvas" width="1280" height="1024"></canvas>
+            <canvas id="ui-canvas" width="1280" height="1024"></canvas>
+            <div id="cinema-overlay" class="cinema-active"></div>
+
+            <div id="boot-overlay">
+                <div class="dossier-card">
+                    <div class="stamp-top-secret">STRÄNGT HEMLIGT // KUNGL. FLYGFÖRVALTNINGEN</div>
+                    <h1>PROJEKT: J 35X "TORS VREDE"</h1>
+                    <p class="dossier-meta">DATUM: Hösten 1961 | GRAFIKMOTOR: WebGL 2.5D/3D (Panorering & Närbild)</p>
+                    <hr class="dossier-divider">
+                    <p class="dossier-text">
+                        FN:s generalsekreterare Dag Hammarskjöld har störtat vid Ndola. Stormakterna tvekar, men i en villa i Linköping har två sextonåringar fått sitt eftermiddagsfika förstört. Med en mässingsnyckel, en smörfläckad skolatlas från 1954, ett skevt lerhjärta från lekskolan och stans vassaste flipperspelsreflexer väntar Kalla krigets mest osannolika uppdrag.
+                    </p>
+                    <div class="dossier-specs">
+                        <span><strong>3D-MOTOR:</strong> Three.js WebGL (Komplett 1961-Villa, Märklin-tågbana, Mörkrum, Gillestuga & Taxen Sputnik)</span>
+                        <span><strong>RÖSTMOTOR:</strong> Flerspråkig Dialekt-TTS & WebAudio Syntetisator</span>
+                        <span><strong>SPELSTIL:</strong> Klassiskt Peka & Klicka (LucasArts SCUMM-stil)</span>
+                    </div>
+                    <button id="btn-launch-game" class="launch-button">FÄLL NER VISIRET & STARTA PROLOGEN (1961)</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 1. Kärnsystem (Core) -->
+    <script src="js/core/state.js"></script>
+    <script src="js/core/audio.js"></script>
+    <script src="js/core/voice.js"></script>
+    <script src="js/core/renderer.js"></script>
+    <script src="js/core/ui.js"></script>
+    <script src="js/core/engine.js"></script>
+
+    <!-- 2. Scenmoduler (Scenes) -->
+    <script src="js/scenes/scene0_intro.js"></script>
+    <script src="js/scenes/scene1_props.js"></script>
+    <script src="js/scenes/scene1_furniture_pack.js"></script>
+    <script src="js/scenes/scene1_trainroom.js"></script>
+    <script src="js/scenes/scene1_darkroom_pack.js"></script>
+    <script src="js/scenes/scene1_retro_living_pack.js"></script>
+    <script src="js/scenes/scene1_house_map.js"></script>
+    <script src="js/scenes/scene1_villa.js"></script>
+    <script src="js/scenes/scene1_boyroom.js"></script>
+    <script src="js/scenes/scene2_gate.js"></script>
+</body>
+</html>

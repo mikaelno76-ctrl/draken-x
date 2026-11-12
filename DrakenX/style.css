@@ -1,0 +1,239 @@
+/* ==========================================================================
+   DRAKEN X: TORS VREDE (1961) - STILMALL FÖR MAXIMERAT SPELFÖNSTER
+   ========================================================================== */
+
+:root {
+    --bg-dark: #07080a;
+    --panel-metal: #14171d;
+    --panel-border: #2c3542;
+    --amber-glow: #ffaa00;
+    --saab-blue: #245888;
+    --stamp-red: #b52222;
+    --paper-manila: #ece1cb;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-dark);
+    color: #e8eaed;
+    font-family: 'Courier Prime', monospace;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#top-bar {
+    height: 36px;
+    width: 100%;
+    background: linear-gradient(180deg, #1f242d 0%, #101318 100%);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 100;
+}
+
+.bar-left, .bar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badge-secret {
+    background-color: var(--stamp-red);
+    color: #fff;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+}
+
+.game-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--amber-glow);
+    letter-spacing: 1.2px;
+}
+
+.engine-tag {
+    color: #67b0e8;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+.retro-btn, .retro-select {
+    background: #232a34;
+    color: #e0e6ed;
+    border: 1px solid #455063;
+    padding: 3px 10px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.retro-btn:hover, .retro-select:hover {
+    background: #333c4b;
+    border-color: var(--amber-glow);
+    color: #fff;
+}
+
+#viewport-wrapper {
+    flex: 1;
+    width: 100vw;
+    height: calc(100vh - 36px);
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: 0;
+    background: #000;
+}
+
+#game-frame {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #050608;
+    overflow: hidden;
+}
+
+#webgl-canvas,
+#ui-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#webgl-canvas {
+    z-index: 1;
+}
+
+#ui-canvas {
+    z-index: 5;
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="%23ffaa00" stroke-width="1.5" opacity="0.85"/><path d="M16 2v8M16 22v8M2 16h8M22 16h8" stroke="%23ffaa00" stroke-width="1.8"/><circle cx="16" cy="16" r="2" fill="%23ffffff"/></svg>') 16 16, crosshair;
+}
+
+#cinema-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#cinema-overlay.cinema-active {
+    opacity: 1;
+    box-shadow: inset 0 0 110px rgba(8, 5, 2, 0.78), inset 0 0 35px rgba(0, 0, 0, 0.65);
+    background-image:
+        radial-gradient(circle at 50% 42%, rgba(255, 210, 145, 0.06) 0%, rgba(18, 12, 8, 0.34) 100%),
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.065'/%3E%3C/svg%3E");
+    mix-blend-mode: multiply;
+}
+
+#boot-overlay {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(16, 20, 28, 0.92) 0%, rgba(5, 7, 10, 0.98) 100%);
+    backdrop-filter: blur(8px);
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    transition: opacity 0.4s ease;
+}
+
+#boot-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.dossier-card {
+    max-width: 720px;
+    background-color: var(--paper-manila);
+    color: #1a1917;
+    padding: 36px 42px;
+    border: 2px solid #2b2620;
+    border-radius: 3px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.85);
+}
+
+.stamp-top-secret {
+    display: inline-block;
+    border: 3px solid var(--stamp-red);
+    color: var(--stamp-red);
+    font-family: 'Special Elite', monospace;
+    font-weight: 700;
+    padding: 4px 12px;
+    font-size: 15px;
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+    transform: rotate(-1.5deg);
+}
+
+.dossier-card h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 32px;
+    color: #111;
+    margin-bottom: 8px;
+}
+
+.dossier-meta {
+    font-size: 14px;
+    font-weight: 700;
+    color: #4a4238;
+    margin-bottom: 14px;
+}
+
+.dossier-divider {
+    border: none;
+    border-top: 2px dashed #8c7f6c;
+    margin-bottom: 16px;
+}
+
+.dossier-text {
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.dossier-specs {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.06);
+    padding: 12px 16px;
+    border-left: 4px solid var(--saab-blue);
+    font-size: 13px;
+    margin-bottom: 22px;
+}
+
+.launch-button {
+    width: 100%;
+    background: linear-gradient(180deg, #cc2929 0%, #991b1b 100%);
+    color: #fff;
+    font-family: 'Oswald', sans-serif;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    padding: 14px 20px;
+    border: 2px solid #550d0d;
+    border-radius: 4px;
+    cursor: pointer;
+}
