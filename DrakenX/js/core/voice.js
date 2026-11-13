@@ -111,6 +111,7 @@ window.VoiceEngine = {
         if (gs) {
             gs.subtitle.active = true;
             gs.subtitle.speaker = profile.name;
+            gs.subtitle.speakerId = speakerId;
             gs.subtitle.text = displayText;
             gs.subtitle.color = profile.color;
 

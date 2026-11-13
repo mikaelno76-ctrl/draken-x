@@ -55,6 +55,9 @@ window.Renderer = {
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.15;
 
+        // Efterbehandling (bloom, gradering, vinjett, kantutjämning) – se postfx.js
+        if (window.PostFX) window.PostFX.init(this.renderer);
+
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0c1017);
 
@@ -75,8 +78,9 @@ window.Renderer = {
         this.clearScene();
     },
 
-    clearScene(fogColor = 0x101520, fogDensity = 0.015) {
+    clearScene(fogColor = 0x101520, fogDensity = 0.015, grade = null) {
         if (!this.scene) return;
+        if (window.PostFX) window.PostFX.setGrade(grade || {});
 
         while (this.roomGroup.children.length > 0) this.roomGroup.remove(this.roomGroup.children[0]);
         while (this.actorsGroup.children.length > 0) this.actorsGroup.remove(this.actorsGroup.children[0]);
@@ -88,6 +92,8 @@ window.Renderer = {
         this.lasseActor = null;
         this.connyActor = null;
         this.dogActor = null;
+        this.allActors = [];
+        this._lasseLast = null;
 
         this.cameraPanX = 0;
         this.targetCameraPanX = 0;
@@ -125,37 +131,40 @@ window.Renderer = {
         mainSpot.castShadow = true;
         mainSpot.shadow.mapSize.width = 2048;
         mainSpot.shadow.mapSize.height = 2048;
-        mainSpot.shadow.camera.left = -15;
-        mainSpot.shadow.camera.right = 15;
-        mainSpot.shadow.camera.top = 10;
-        mainSpot.shadow.camera.bottom = -6;
+        mainSpot.shadow.camera.left = -11;
+        mainSpot.shadow.camera.right = 11;
+        mainSpot.shadow.camera.top = 8;
+        mainSpot.shadow.camera.bottom = -5;
+        mainSpot.shadow.radius = 3;
         mainSpot.shadow.camera.near = 0.5;
         mainSpot.shadow.camera.far = 28;
         mainSpot.shadow.bias = -0.0006;
         this.roomGroup.add(mainSpot);
 
         if (!options.openSky) {
-            const warmPoolLeft = new THREE.PointLight(0xffb85c, 0.75, 11.0, 1.6);
+            const warmPoolLeft = new THREE.PointLight(0xffb060, 0.42, 11.0, 1.6);
             warmPoolLeft.position.set(-3.2, 2.8, -0.8);
-            const warmPoolRight = new THREE.PointLight(0xffaa44, 0.80, 11.0, 1.6);
+            const warmPoolRight = new THREE.PointLight(0xffa850, 0.45, 11.0, 1.6);
             warmPoolRight.position.set(3.2, 2.8, -0.8);
             const frontActorFill = new THREE.DirectionalLight(0xfff4e0, 0.38);
             frontActorFill.position.set(0, 3.5, 8.0);
             this.roomGroup.add(warmPoolLeft, warmPoolRight, frontActorFill);
         }
 
-        const floorMat = new THREE.MeshStandardMaterial({
+        const floorMat = this._floorMaterial ? this._floorMaterial(options) : new THREE.MeshStandardMaterial({
             color: options.woodFloor ? 0xffffff : floorColor,
             map: options.woodFloor ? this.proceduralTextures.wood : null,
             bumpMap: options.woodFloor ? this.proceduralTextures.wood : null,
             bumpScale: 0.012,
-            roughness: options.roughness || 0.42,
-            metalness: 0.06
+            roughness: options.roughness || 0.58,
+            metalness: 0.04
         });
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(28, 12), floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         this.roomGroup.add(floor);
+
+        if (!options.openSky && this._addRoomShading) this._addRoomShading(options);
 
         if (!options.openSky) {
             let wallTex = null;
@@ -275,7 +284,7 @@ window.Renderer = {
             jacketColor: 0x2b5c8f,
             shirtColor: 0xebe4d5,
             pantsColor: 0x1e2733,
-            hairColor: 0x8c6836,
+            hairColor: 0xcfa95e,
             pompadour: false,
             shoulderScale: 0.96,
             heightScale: 1.03,
@@ -310,296 +319,19 @@ window.Renderer = {
         }
     },
 
+    // Figurerna byggs av js/core/characters.js (Characters.create) – den fil
+    // ersätter denna funktion vid laddning. Reservläge om den saknas:
     createCharacterMesh(id, style = {}) {
-        const group = new THREE.Group();
-        const sScale = style.shoulderScale || 1.0;
-        const hScale = style.heightScale || 1.0;
-        group.scale.set(1.0, hScale, 1.0);
-
-        const skinMat = new THREE.MeshStandardMaterial({
-            color: style.skinColor || 0xf2c29b,
-            roughness: 0.55,
-            metalness: 0.05
-        });
-        const jacketMat = new THREE.MeshStandardMaterial({
-            color: style.jacketColor || 0x4a525d,
-            map: this.proceduralTextures.fabric,
-            roughness: 0.68,
-            metalness: 0.08
-        });
-        const zipperMat = new THREE.MeshStandardMaterial({
-            color: 0xd8e0e8,
-            metalness: 0.85,
-            roughness: 0.25
-        });
-        const pantsMat = new THREE.MeshStandardMaterial({
-            color: style.pantsColor || 0x181c22,
-            map: this.proceduralTextures.fabric,
-            roughness: 0.82
-        });
-        const shoeMat = new THREE.MeshStandardMaterial({
-            color: 0x18120e,
-            roughness: 0.45
-        });
-        const soleMat = new THREE.MeshStandardMaterial({
-            color: 0x4a4238,
-            roughness: 0.75
-        });
-        const hairMat = new THREE.MeshStandardMaterial({
-            color: style.hairColor || 0x7a5c32,
-            roughness: style.pompadour ? 0.18 : 0.55,
-            metalness: style.pompadour ? 0.28 : 0.06
-        });
-
-        // 1. HÖFTER / BÄCKEN
-        const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.24 * sScale, 0.22, 0.22, 16), pantsMat);
-        pelvis.scale.set(1.15, 1, 0.75);
-        pelvis.position.set(0, 0.90, 0);
-        pelvis.castShadow = true;
-        this._addToonOutline(pelvis, 1.05);
-        group.add(pelvis);
-
-        // 2. BEN MED KNÄLED & SKOR
-        const buildLeg = (isLeft) => {
-            const hipPivot = new THREE.Group();
-            hipPivot.position.set(isLeft ? -0.14 * sScale : 0.14 * sScale, 0.86, 0);
-
-            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.095, 0.42, 14), pantsMat);
-            thigh.position.y = -0.20;
-            thigh.castShadow = true;
-            this._addToonOutline(thigh, 1.06);
-            hipPivot.add(thigh);
-
-            const kneeJoint = new THREE.Group();
-            kneeJoint.position.set(0, -0.40, 0);
-            const kneeSphere = new THREE.Mesh(new THREE.SphereGeometry(0.092, 12, 12), pantsMat);
-            kneeJoint.add(kneeSphere);
-
-            const calf = new THREE.Mesh(new THREE.CylinderGeometry(0.092, 0.075, 0.40, 14), pantsMat);
-            calf.position.y = -0.20;
-            calf.castShadow = true;
-            this._addToonOutline(calf, 1.06);
-            kneeJoint.add(calf);
-
-            const footGroup = new THREE.Group();
-            footGroup.position.set(0, -0.41, 0.05);
-            const shoeUpper = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.24), shoeMat);
-            const shoeToe = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), shoeMat);
-            shoeToe.scale.set(1.0, 0.65, 1.2);
-            shoeToe.position.set(0, -0.01, 0.11);
-            const sole = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.025, 0.28), soleMat);
-            sole.position.set(0, -0.045, 0.02);
-            this._addToonOutline(shoeUpper, 1.06);
-            footGroup.add(shoeUpper, shoeToe, sole);
-
-            kneeJoint.add(footGroup);
-            hipPivot.add(kneeJoint);
-            hipPivot.userData = { kneeJoint };
-            return hipPivot;
-        };
-
-        const leftLegGroup = buildLeg(true);
-        const rightLegGroup = buildLeg(false);
-        group.add(leftLegGroup, rightLegGroup);
-
-        // 3. ÖVERKROPP / TORSO
-        const torsoGroup = new THREE.Group();
-        torsoGroup.position.set(0, 1.32, 0);
-
-        const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.31 * sScale, 0.25, 0.74, 18), jacketMat);
-        chest.scale.set(1.12, 1.0, 0.68);
-        chest.castShadow = true;
-        this._addToonOutline(chest, 1.045);
-        torsoGroup.add(chest);
-
-        const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.12, 16, 1, true), jacketMat);
-        collar.position.set(0, 0.39, 0);
-        torsoGroup.add(collar);
-
-        const zipperLine = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.72, 0.02), zipperMat);
-        zipperLine.position.set(0, 0.0, 0.195);
-        torsoGroup.add(zipperLine);
-
-        group.add(torsoGroup);
-
-        // 4. ARMAR MED ARMBÅGSLED & HÄNDER
-        const buildArm = (isLeft) => {
-            const shoulderPivot = new THREE.Group();
-            shoulderPivot.position.set(isLeft ? -0.35 * sScale : 0.35 * sScale, 1.60, 0);
-            shoulderPivot.rotation.z = isLeft ? 0.14 : -0.14;
-
-            const shoulderCap = new THREE.Mesh(new THREE.SphereGeometry(0.105, 12, 12), jacketMat);
-            shoulderPivot.add(shoulderCap);
-
-            const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.080, 0.34, 12), jacketMat);
-            upperArm.position.y = -0.17;
-            upperArm.castShadow = true;
-            this._addToonOutline(upperArm, 1.06);
-            shoulderPivot.add(upperArm);
-
-            const elbowJoint = new THREE.Group();
-            elbowJoint.position.set(0, -0.34, 0);
-            elbowJoint.rotation.x = -0.14;
-
-            const foreArm = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.065, 0.32, 12), jacketMat);
-            foreArm.position.y = -0.16;
-            foreArm.castShadow = true;
-            this._addToonOutline(foreArm, 1.06);
-            elbowJoint.add(foreArm);
-
-            const handGroup = new THREE.Group();
-            handGroup.position.set(0, -0.36, 0);
-            const palm = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.11, 0.085), skinMat);
-            const thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.014, 0.06, 8), skinMat);
-            thumb.position.set(isLeft ? 0.02 : -0.02, 0.01, 0.045);
-            thumb.rotation.x = 0.6;
-            this._addToonOutline(palm, 1.06);
-            handGroup.add(palm, thumb);
-
-            elbowJoint.add(handGroup);
-            shoulderPivot.add(elbowJoint);
-            shoulderPivot.userData = { elbowJoint };
-            return shoulderPivot;
-        };
-
-        const leftArmGroup = buildArm(true);
-        const rightArmGroup = buildArm(false);
-        group.add(leftArmGroup, rightArmGroup);
-
-        // 5. HALS, HUVUD, BLINKANDE ÖGONLOCK, ÖGONBRYN & MUN
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.098, 0.18, 14), skinMat);
-        neck.position.set(0, 1.74, 0);
-        group.add(neck);
-
-        const headGroup = new THREE.Group();
-        headGroup.position.set(0, 1.94, 0);
-
-        const jawW = style.jawWidth || 0.95;
-        const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.21, 20, 20), skinMat);
-        cranium.scale.set(0.92 * jawW, 1.12, 0.98);
-        cranium.castShadow = true;
-        this._addToonOutline(cranium, 1.045);
-        headGroup.add(cranium);
-
-        const jawChin = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 12), skinMat);
-        jawChin.scale.set(jawW, 0.90, 0.95);
-        jawChin.position.set(0, -0.10, 0.04);
-        headGroup.add(jawChin);
-
-        [-0.195 * jawW, 0.195 * jawW].forEach(earX => {
-            const ear = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 10), skinMat);
-            ear.scale.set(0.45, 1.15, 0.75);
-            ear.position.set(earX, -0.01, 0.0);
-            headGroup.add(ear);
-        });
-
-        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.11, 10), skinMat);
-        nose.rotation.x = Math.PI * 0.42;
-        nose.position.set(0, -0.01, 0.215);
-        headGroup.add(nose);
-
-        const scleraMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const irisMat = new THREE.MeshBasicMaterial({ color: 0x2b5c8f });
-        const pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-
-        const eyelids = [];
-        const eyebrows = [];
-
-        [-0.072, 0.072].forEach((ex, i) => {
-            const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.036, 12, 12), scleraMat);
-            sclera.scale.set(1.1, 0.88, 0.6);
-            sclera.position.set(ex, 0.045, 0.185);
-
-            const iris = new THREE.Mesh(new THREE.SphereGeometry(0.020, 10, 10), irisMat);
-            iris.position.set(ex, 0.045, 0.203);
-
-            const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 8), pupilMat);
-            pupil.position.set(ex, 0.045, 0.211);
-
-            const eyelid = new THREE.Mesh(
-                new THREE.SphereGeometry(0.039, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
-                skinMat
-            );
-            eyelid.position.set(ex, 0.045, 0.186);
-            eyelid.scale.set(1.12, 0.12, 0.65);
-            eyelids.push(eyelid);
-
-            const brow = new THREE.Mesh(new THREE.BoxGeometry(0.070, 0.018, 0.025), hairMat);
-            brow.position.set(ex, 0.095, 0.198);
-            brow.rotation.z = i === 0 ? 0.08 : -0.08;
-            eyebrows.push(brow);
-
-            headGroup.add(sclera, iris, pupil, eyelid, brow);
-        });
-
-        // Rundad, uttrycksfull mun (SphereGeometry stöds i alla Three.js-versioner!)
-        const mouthMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(0.038, 12, 10),
-            new THREE.MeshBasicMaterial({ color: 0x6e1e1e })
-        );
-        mouthMesh.scale.set(1.2, 0.35, 0.5);
-        mouthMesh.position.set(0, -0.105, 0.198);
-        headGroup.add(mouthMesh);
-
-        // HÅR MED OUTLINE
-        const hairCrown = new THREE.Mesh(
-            new THREE.SphereGeometry(0.218, 18, 16, 0, Math.PI * 2, 0, Math.PI * 0.58),
-            hairMat
-        );
-        hairCrown.scale.set(0.96 * jawW, 1.12, 1.02);
-        hairCrown.position.y = 0.02;
-        this._addToonOutline(hairCrown, 1.04);
-        headGroup.add(hairCrown);
-
-        const backHair = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.21, 0.28, 14), hairMat);
-        backHair.scale.set(0.95, 1.0, 0.65);
-        backHair.position.set(0, -0.06, -0.08);
-        headGroup.add(backHair);
-
-        [-0.18 * jawW, 0.18 * jawW].forEach(hx => {
-            const sideLock = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.12), hairMat);
-            sideLock.position.set(hx, -0.04, 0.02);
-            headGroup.add(sideLock);
-        });
-
-        if (style.pompadour) {
-            const quiff = new THREE.Mesh(new THREE.SphereGeometry(0.145, 14, 12), hairMat);
-            quiff.scale.set(1.18, 0.88, 1.38);
-            quiff.position.set(0, 0.20, 0.12);
-            quiff.rotation.x = -0.22;
-            this._addToonOutline(quiff, 1.05);
-            headGroup.add(quiff);
-        } else {
-            const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), hairMat);
-            fringe.scale.set(1.3, 0.55, 0.8);
-            fringe.position.set(0, 0.15, 0.14);
-            headGroup.add(fringe);
+        if (window.Characters) {
+            const actor = window.Characters.create(this, id, style);
+            (this.allActors = this.allActors || []).push(actor);
+            return actor;
         }
-
-        group.add(headGroup);
-
-        const hitbox = new THREE.Mesh(
-            new THREE.BoxGeometry(0.85, 2.25, 0.65),
-            new THREE.MeshBasicMaterial({ visible: false })
-        );
-        hitbox.position.set(0, 1.12, 0);
-        group.add(hitbox);
-
-        return {
-            id,
-            group,
-            torsoGroup,
-            headGroup,
-            mouthMesh,
-            eyelids,
-            eyebrows,
-            blinkOffset: Math.random() * 4.0,
-            leftLeg: leftLegGroup,
-            rightLeg: rightLegGroup,
-            leftArm: leftArmGroup,
-            rightArm: rightArmGroup,
-            hitbox
-        };
+        const g = new THREE.Group();
+        const hb = new THREE.Mesh(new THREE.BoxGeometry(0.85, 2.25, 0.65), new THREE.MeshBasicMaterial({ visible: false }));
+        hb.position.set(0, 1.12, 0);
+        g.add(hb);
+        return { id, group: g, hitbox: hb };
     },
 
     createDraken3D() {
@@ -761,68 +493,31 @@ window.Renderer = {
         return car;
     },
 
-    _animateActorLife(actor, otherActor, isTalking, isWalking, elapsed) {
-        if (!actor) return;
-
-        const blinkCycle = (elapsed + actor.blinkOffset) % 3.8;
-        const isBlinking = blinkCycle > 3.64;
-        if (actor.eyelids) {
-            actor.eyelids.forEach(lid => {
-                lid.scale.y = isBlinking ? 1.05 : 0.12;
-            });
-        }
-
-        if (actor.torsoGroup && !isWalking) {
-            const breath = Math.sin(elapsed * 2.4 + actor.blinkOffset);
-            actor.torsoGroup.position.y = 1.32 + breath * 0.012;
-            actor.torsoGroup.scale.set(1.0 + breath * 0.015, 1.0, 1.0 + breath * 0.02);
-        }
-
-        if (actor.headGroup) {
-            let targetHeadYaw = 0;
-            let targetHeadPitch = Math.sin(elapsed * 1.5 + actor.blinkOffset) * 0.03;
-
-            if (otherActor && (isTalking || (window.GameState && (window.GameState.player.isTalking || window.GameState.companion.isTalking)))) {
-                const dx = otherActor.group.position.x - actor.group.position.x;
-                targetHeadYaw = THREE.MathUtils.clamp(dx * 0.18, -0.38, 0.38) - actor.group.rotation.y * 0.5;
-            }
-            if (isTalking) {
-                targetHeadPitch += Math.sin(elapsed * 14) * 0.045;
-            }
-
-            actor.headGroup.rotation.y += (targetHeadYaw - actor.headGroup.rotation.y) * 0.12;
-            actor.headGroup.rotation.x += (targetHeadPitch - actor.headGroup.rotation.x) * 0.15;
-        }
-
-        if (actor.eyebrows) {
-            const browLift = isTalking ? Math.abs(Math.sin(elapsed * 10)) * 0.018 : 0;
-            actor.eyebrows.forEach((b, idx) => {
-                b.position.y = 0.095 + browLift;
-                b.rotation.z = (idx === 0 ? 0.08 : -0.08) + (isTalking ? (idx === 0 ? 0.06 : -0.06) : 0);
-            });
-        }
-
-        if (actor.mouthMesh) {
-            if (isTalking) {
-                const openY = 0.45 + Math.abs(Math.sin(elapsed * 20)) * 1.65;
-                const openX = 1.05 + Math.abs(Math.cos(elapsed * 15)) * 0.35;
-                actor.mouthMesh.scale.set(openX, openY, 0.5);
-            } else {
-                actor.mouthMesh.scale.set(1.2, 0.35, 0.5);
-            }
-        }
-    },
-
     renderFrame() {
         if (!this.renderer || !this.scene || !this.camera) return;
 
         const elapsed = this.clock.getElapsedTime();
+        if (this.updateAtmosphere) this.updateAtmosphere(elapsed);
+        this._lastDt = Math.min(0.1, Math.max(0.001, elapsed - (this._prevElapsed !== undefined ? this._prevElapsed : elapsed - 0.016)));
+        this._prevElapsed = elapsed;
         const gs = window.GameState;
 
+        const dt = this._lastDt;
+        const C = window.Characters;
+        const talkingId = gs && gs.subtitle && gs.subtitle.active ? gs.subtitle.speakerId : null;
+
         if (this.lasseActor && gs) {
-            this.lasseActor.group.visible = true;
+            const A = this.lasseActor;
+            A.group.visible = true;
             const pos = this.screenToWorld(gs.player.x, gs.player.y);
-            this.lasseActor.group.position.copy(pos);
+
+            // Verklig gånghastighet (världsenheter/s) så stegen matchar markens rörelse
+            const prev = this._lasseLast;
+            const inst = prev ? Math.hypot(pos.x - prev.x, pos.z - prev.z) / dt : 0;
+            this._lasseSpeed = (this._lasseSpeed || 0) + (inst - (this._lasseSpeed || 0)) * 0.25;
+            this._lasseLast = { x: pos.x, z: pos.z };
+            A.group.position.x = pos.x;
+            A.group.position.z = pos.z;
 
             // Om karaktärerna finns i rummet ska kameran ALLTID följa dem i 2.5D-vy!
             this.targetCameraPanX = THREE.MathUtils.clamp(
@@ -834,49 +529,54 @@ window.Renderer = {
             this.camera.position.set(this.cameraPanX, this.cameraHeightY, this.cameraDistanceZ);
             this.camera.lookAt(this.cameraPanX, 1.32, 0);
 
-            const targetRotY = gs.player.direction === 'left' ? -0.65
-                : gs.player.direction === 'right' ? 0.65 : 0;
-            this.lasseActor.group.rotation.y += (targetRotY - this.lasseActor.group.rotation.y) * 0.2;
-
-            if (gs.player.isWalking) {
-                const swing = Math.sin(elapsed * 12) * 0.48;
-                this.lasseActor.leftLeg.rotation.x = swing;
-                this.lasseActor.rightLeg.rotation.x = -swing;
-                this.lasseActor.leftArm.rotation.x = -swing * 0.7;
-                this.lasseActor.rightArm.rotation.x = swing * 0.7;
-
-                if (this.lasseActor.leftLeg.userData.kneeJoint) {
-                    this.lasseActor.leftLeg.userData.kneeJoint.rotation.x = Math.max(0, -swing * 1.15);
-                    this.lasseActor.rightLeg.userData.kneeJoint.rotation.x = Math.max(0, swing * 1.15);
-                }
-
-                this.lasseActor.group.position.y = Math.abs(Math.cos(elapsed * 12)) * 0.045;
-            } else {
-                this.lasseActor.leftLeg.rotation.x *= 0.8;
-                this.lasseActor.rightLeg.rotation.x *= 0.8;
-                this.lasseActor.leftArm.rotation.x *= 0.8;
-                this.lasseActor.rightArm.rotation.x *= 0.8;
-                if (this.lasseActor.leftLeg.userData.kneeJoint) {
-                    this.lasseActor.leftLeg.userData.kneeJoint.rotation.x *= 0.8;
-                    this.lasseActor.rightLeg.userData.kneeJoint.rotation.x *= 0.8;
-                }
+            let faceYaw = gs.player.direction === 'left' ? -0.65 : gs.player.direction === 'right' ? 0.65 : 0;
+            const conny = this.connyActor;
+            const dxToConny = conny ? conny.group.position.x - pos.x : 0;
+            if (conny && !gs.player.isWalking && (gs.player.isTalking || gs.companion.isTalking)) {
+                faceYaw = THREE.MathUtils.clamp(dxToConny * 0.5, -0.6, 0.6);
             }
 
-            this._animateActorLife(this.lasseActor, this.connyActor, gs.player.isTalking, gs.player.isWalking, elapsed);
+            if (C) C.update(A, { t: elapsed, dt, walking: gs.player.isWalking, speed: this._lasseSpeed, talking: gs.player.isTalking, faceYaw, lookDx: dxToConny });
         }
 
         if (this.connyActor && gs) {
-            this.connyActor.group.visible = true;
+            const A = this.connyActor;
+            A.group.visible = true;
             const cPos = this.screenToWorld(gs.companion.x, gs.companion.y);
-            this.connyActor.group.position.copy(cPos);
-            this.connyActor.group.rotation.y = gs.companion.direction === 'left' ? -0.45 : 0.45;
-            this._animateActorLife(this.connyActor, this.lasseActor, gs.companion.isTalking, false, elapsed);
+            A.group.position.x = cPos.x;
+            A.group.position.z = cPos.z;
+
+            // Conny vänder sig mot Lasse när de är nära varandra eller någon pratar
+            const lasse = this.lasseActor;
+            const dx = lasse ? lasse.group.position.x - cPos.x : 0;
+            let faceYaw = gs.companion.direction === 'left' ? -0.45 : 0.45;
+            if (lasse && (Math.abs(dx) < 3.4 || gs.player.isTalking || gs.companion.isTalking)) {
+                faceYaw = THREE.MathUtils.clamp(dx * 0.45, -0.6, 0.6);
+            }
+            if (C) C.update(A, { t: elapsed, dt, walking: false, speed: 0, talking: gs.companion.isTalking, faceYaw, lookDx: dx });
         }
 
-        this.renderer.setViewport(0, 264, 1280, 760);
-        this.renderer.setScissor(0, 264, 1280, 760);
-        this.renderer.setScissorTest(true);
-        this.renderer.render(this.scene, this.camera);
+        // Övriga figurer (Tant Karin, överkonstapeln ...) lever också: andas, blinkar, tittar
+        if (C && this.allActors && gs) {
+            const lasse = this.lasseActor;
+            this.allActors.forEach(A => {
+                if (A === this.lasseActor || A === this.connyActor) return;
+                if (A.anim.baseYaw === undefined) A.anim.baseYaw = A.group.rotation.y;
+                const dx = lasse ? lasse.group.position.x - A.group.position.x : 0;
+                const talking = talkingId === A.id;
+                const faceYaw = talking ? THREE.MathUtils.clamp(dx * 0.3, -0.6, 0.6) : A.anim.baseYaw;
+                C.update(A, { t: elapsed, dt, walking: false, speed: 0, talking, faceYaw, lookDx: dx });
+            });
+        }
+
+        if (window.PostFX) {
+            window.PostFX.render(this.scene, this.camera, this._lastDt || 0.016);
+        } else {
+            this.renderer.setViewport(0, 264, 1280, 760);
+            this.renderer.setScissor(0, 264, 1280, 760);
+            this.renderer.setScissorTest(true);
+            this.renderer.render(this.scene, this.camera);
+        }
     },
 
     _makeTiledTexture(canvas, repeatX, repeatY) {

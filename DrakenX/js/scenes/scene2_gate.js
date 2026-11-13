@@ -28,7 +28,7 @@ window.Engine.registerScene('scene2_gate', {
         const gs = window.GameState;
         if (!R || !gs) return;
 
-        R.clearScene(0x090d14, 0.022);
+        R.clearScene(0x090d14, 0.022, { exposure: 3.4, bloom: 0.55, bloomThreshold: 0.9, vignette: 0.42, shadowTint: [0.82, 0.93, 1.22], highTint: [1.08, 1.0, 0.86], saturation: 1.12 });
         gs.webgl.cameraMode = 'room_25d';
 
         gs.player.x = 220;
