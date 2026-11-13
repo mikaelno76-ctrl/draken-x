@@ -41,7 +41,7 @@ window.Engine.registerScene('scene3_hangar', {
             mesh.position.set(x,y,z); mesh.castShadow = true; mesh.receiveShadow = true;
             parent.add(mesh); return mesh;
         };
-        const concrete = mat(0x232d39), dark = mat(0x111b27), steel = mat(0x7f99ad,0.85,0.28);
+        const concrete = mat(0x232d39), dark = mat(0x111b27), steel = mat(0x8aa4b8,0.45,0.4);
         block(32,0.35,19,0,-0.2,-3,concrete);
         block(32,15,0.6,0,7,-12,dark);
         block(0.6,15,19,-16,7,-3,concrete);
@@ -60,6 +60,8 @@ window.Engine.registerScene('scene3_hangar', {
                 shade.position.copy(lamp.position); room.add(shade);
             }
         }
+        // Metall utan miljökarta blir nästan svart i three.js, därför lågt metalvärde ovan + fyllnadsljus här.
+        room.add(new THREE.HemisphereLight(0x9db9e6,0x1c2430,0.75));
         const blue = new THREE.DirectionalLight(0x7fa8ef,1.6);
         blue.position.set(-5,10,8); room.add(blue);
         const edge = new THREE.DirectionalLight(0xffd89d,1.1);
@@ -67,9 +69,9 @@ window.Engine.registerScene('scene3_hangar', {
 
         // Stor dubbel-deltavingad 35X-siluett, uppbyggd i riktig 3D.
         this.jet = new THREE.Group();
-        const titanium = mat(0x9baebc,0.88,0.24);
-        const silver = mat(0xc6d5dc,0.85,0.22);
-        const shadow = mat(0x273645,0.8,0.3);
+        const titanium = mat(0xa9bccb,0.4,0.38);
+        const silver = mat(0xd2dde3,0.4,0.34);
+        const shadow = mat(0x34465a,0.35,0.5);
         const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(0.7,1.05,13,24),titanium);
         fuselage.rotation.x = Math.PI/2; fuselage.position.set(0,2.35,-3.2); this.jet.add(fuselage);
         const nose = new THREE.Mesh(new THREE.ConeGeometry(0.7,3.8,24),silver);
