@@ -11,6 +11,9 @@ window.Engine.registerScene('scene3_hangar', {
     visitorTimer: 0,
     visitStarted: false,
     completed: false,
+    ragnarokCoil: null,
+    coilLight: null,
+    visitorDialoguePlayed: false,
 
     init() {
         const R = window.Renderer, gs = window.GameState;
@@ -26,6 +29,9 @@ window.Engine.registerScene('scene3_hangar', {
         this.visitorTimer = 0;
         this.visitStarted = false;
         this.completed = false;
+        this.visitorDialoguePlayed = false;
+        this.visitStarted = gs.getFlag('hangarVisitorTriggered') && !gs.getFlag('hangarVisitorHandled');
+        this.visitorTimer = this.visitStarted ? 6 : 0;
         this.lamps = [];
         const room = R.roomGroup;
         const mat = (color, metalness = 0.1, roughness = 0.75) =>
@@ -100,6 +106,21 @@ window.Engine.registerScene('scene3_hangar', {
         const hiding = block(2.3,2.1,1.7,-12,1.05,-6,mat(0x39434c));
         const hatch = block(1.2,0.22,1.2,0,2.9,0.6,shadow,this.jet);
         const exit = block(2.8,3.6,0.4,13,1.8,-10,mat(0x39434c));
+        // Ragnaröks experimentella BALDER-relä: lysande kopparspole och servicevred.
+        const coil = new THREE.Group();
+        const copper = mat(0xc47d38,0.9,0.22);
+        const pedestal = block(1.3,1.6,1.0,-5,0.8,-7,mat(0x404956,0.65));
+        const torus = new THREE.Mesh(new THREE.TorusGeometry(0.58,0.13,12,32),copper);
+        torus.position.set(-5,2.0,-6.6); coil.add(torus);
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.27,16,12),
+            new THREE.MeshStandardMaterial({color:0x8fe8ff,emissive:0x36bfff,emissiveIntensity:1.5}));
+        core.position.copy(torus.position); coil.add(core);
+        this.coilLight = new THREE.PointLight(0x55cfff,0,7);
+        this.coilLight.position.copy(core.position); coil.add(this.coilLight);
+        room.add(coil); this.ragnarokCoil = coil;
+        const serviceDial = block(0.55,0.4,0.3,-4.15,1.15,-6.45,mat(0xe2bc66,0.75));
+        const schematics = block(0.9,0.08,0.65,8,1.25,-5,mat(0xe2dcc3));
+        const circuitBreaker = block(0.65,0.9,0.4,-6.7,1.2,-7,mat(0x9c3434,0.6));
         const interactive = (mesh,id,name,x) => R.registerInteractive(mesh,{
             id,name,walkX:x,walkY:625,lookAt:'front'
         });
@@ -109,10 +130,14 @@ window.Engine.registerScene('scene3_hangar', {
         interactive(hiding,'hangar_hide','Skuggig förrådsnisch',120);
         interactive(hatch,'hangar_cockpit','J 35X Tors Vrede — cockpit',645);
         interactive(exit,'hangar_exit','Servicedörr mot korridoren',1180);
+        interactive(pedestal,'hangar_balder','BALDER — Ragnaröks experimentella ljusrelä',445);
+        interactive(serviceDial,'hangar_balder_dial','BALDER:s kalibreringsvred',515);
+        interactive(schematics,'hangar_schematics','Sigvard Ragnaröks bortglömda ritningar',940);
+        interactive(circuitBreaker,'hangar_breaker','Nödströmbrytare märkt MIDGÅRD',340);
         const figure = R.createCharacterMesh('pappa',{
             jacketColor:0x48586a,shirtColor:0xc6c2b2,pantsColor:0x30363e,hairColor:0x999999
         });
-        this.visitor=figure.group; this.visitor.position.set(8,0,-6); this.visitor.visible=false;
+        this.visitor=figure.group; this.visitor.position.set(8,0,-6); this.visitor.visible=this.visitStarted;
         R.actorsGroup.add(this.visitor);
         R.spawnMainActors(true);
     },
@@ -140,6 +165,19 @@ window.Engine.registerScene('scene3_hangar', {
         if(this.visitStarted && !this.completed) {
             this.visitorTimer+=dt;
             if(this.visitorTimer>5 && this.visitor) this.visitor.visible=true;
+            if(this.visitorTimer>5 && !this.visitorDialoguePlayed) {
+                this.visitorDialoguePlayed=true;
+                window.VoiceEngine.speakSequence([
+                    {speaker:'pappa',text:'Sigvard Ragnarök, teknologie doktor. Var är nu ritningarna till Balder?'},
+                    {speaker:'pappa',text:'Ett fullständigt ofarligt ljusrelä. Bortsett från att det ibland släcker hela hangaren.'},
+                    {speaker:'pappa',text:'Jag vrider upp kalibreringen ett snäpp. Vad skulle möjligen kunna gå fel?'}
+                ]);
+            }
+        }
+        if(this.coilLight) {
+            const broken=window.GameState.getFlag('hangarBalderFault') && !window.GameState.getFlag('hangarBalderFixed');
+            this.coilLight.intensity=broken ? 2.4+Math.sin(timestamp*0.04)*1.7 : 0.2;
+            if(broken) this.lamps.forEach((lamp,i)=>lamp.intensity=Math.sin(timestamp*0.018+i*1.9)>0.3?0.2:0);
         }
     },
 
@@ -170,6 +208,7 @@ window.Engine.registerScene('scene3_hangar', {
                 say('conny','Bränsleaggregatet är klart! Om någon frågar är vi två väldigt kortväxta flygtekniker.');
                 if(!this.visitStarted && !gs.getFlag('hangarVisitorHandled')){
                     this.visitStarted=true;this.visitorTimer=0;
+                    gs.setFlag('hangarVisitorTriggered');
                     V.speakSequence([
                         {speaker:'lasse',text:'Vänta. Hör du? Någon kommer genom korridoren!'},
                         {speaker:'conny',text:'In bakom förrådsskåpet! Nu!'}
@@ -181,14 +220,51 @@ window.Engine.registerScene('scene3_hangar', {
         if(id==='hangar_hide'){
             if(this.visitStarted && !gs.getFlag('hangarVisitorHandled')){
                 gs.setFlag('hangarVisitorHandled');
+                gs.setFlag('hangarBalderFault');
                 this.completed=true;
                 if(this.visitor) this.visitor.visible=false;
                 V.speakSequence([
-                    {speaker:'pappa',text:'Var tusan lade jag ritningarna? Jaha. Här är de. Och varför luktar det messmör i bergrummet?'},
-                    {speaker:'conny',text:'Viska, Lasse! Han gick. Jag tror inte han såg oss.'},
-                    {speaker:'lasse',text:'Då har vi inte många minuter på oss. Till cockpit!'}
+                    {speaker:'pappa',text:'Ritningarna! Där är de. Nu ska jag bara justera Balder till läge nio. Det finns ingen anledning till oro.'},
+                    {speaker:'conny',text:'Han gick! Men varför blinkar alla lamporna som ett tivoli?'},
+                    {speaker:'lasse',text:'Han lämnade ett fel efter sig. Vi får reda ut det innan vi flyger.'}
                 ]);
             } else say('lasse','En mörk nisch. Bra gömställe, om någon kommer.');
+            return true;
+        }
+        if(id==='hangar_balder'){
+            say('lasse',gs.getFlag('hangarBalderFault')&&!gs.getFlag('hangarBalderFixed')
+                ? 'BALDER. Det står: belysningsautomat, Sigvard Ragnarök. Hela systemet verkar ha fått storhetsvansinne.'
+                : 'BALDER. Ett experimentellt belysningsrelä. Varför behöver ett flygplan ett eget soluppgångsprogram?');
+            return true;
+        }
+        if(id==='hangar_schematics'){
+            gs.setFlag('hangarBalderClue');
+            V.speakSequence([
+                {speaker:'lasse',text:'Ragnaröks ritning: Vid okontrollerad gryning, ställ BALDER i läge tre. Bryt därefter MIDGÅRD. Återställ sist kalibreringen.'},
+                {speaker:'conny',text:'Varför heter säkringen Midgård?'},
+                {speaker:'lasse',text:'Här står: för att universum ska förstå allvaret.'}
+            ]);
+            return true;
+        }
+        if(id==='hangar_balder_dial'){
+            if(!gs.getFlag('hangarBalderFault')) say('conny','Ett vred med nio lägen. Vi kanske ska låta bli innan det händer nåt.');
+            else if(!gs.getFlag('hangarBalderClue')) say('lasse','Nio lägen och inget vettigt schema. Vi måste hitta ritningen.');
+            else if(!gs.getFlag('hangarBalderDialSet')){
+                gs.setFlag('hangarBalderDialSet');
+                say('conny','Läge tre, som det stod på ritningen. Nu låter det som en arg dammsugare.');
+            } else if(gs.getFlag('hangarBalderBreakerSet')&&!gs.getFlag('hangarBalderFixed')){
+                gs.setFlag('hangarBalderFixed');
+                say('lasse','Kalibreringen återställd! Balder är stabil. Ragnarök borde förbjudas att namnge strömbrytare.');
+            } else say('conny','Vredet står redan på tre. Nu måste vi bryta Midgård.');
+            return true;
+        }
+        if(id==='hangar_breaker'){
+            if(!gs.getFlag('hangarBalderFault')) say('lasse','MIDGÅRD. Vi låter den vara tills vidare.');
+            else if(!gs.getFlag('hangarBalderDialSet')) say('conny','Ritningen säger att vi måste ställa Balder rätt först.');
+            else if(!gs.getFlag('hangarBalderBreakerSet')){
+                gs.setFlag('hangarBalderBreakerSet');
+                say('lasse','Midgård bruten. Nu återställer vi kalibreringsvredet!');
+            } else say('conny','Midgård är redan bruten. Tillbaka till Balder-vredet!');
             return true;
         }
         if(id==='hangar_cockpit'){
@@ -196,6 +272,8 @@ window.Engine.registerScene('scene3_hangar', {
                 say('lasse','Tors Vrede är inte startklar. Vi måste göra klart servicen först.');
             } else if(this.visitStarted&&!gs.getFlag('hangarVisitorHandled')){
                 say('conny','Vi kan inte klättra in när en ingenjör står här och letar efter sina papper! Göm dig!');
+            } else if(gs.getFlag('hangarBalderFault')&&!gs.getFlag('hangarBalderFixed')){
+                say('lasse','BALDER:s relä blinkar fortfarande. Vi måste få ordning på Ragnaröks experiment innan start.');
             } else if(!gs.hasItem('messing_nyckel')){
                 say('lasse','Vi saknar mässingsnyckeln till prototypen!');
             } else {
