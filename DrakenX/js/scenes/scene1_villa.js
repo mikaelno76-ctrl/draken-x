@@ -18,7 +18,7 @@ window.Engine.registerScene('scene1_villa', {
         const gs = window.GameState;
         if (!R || !gs) return;
 
-        R.clearScene(0x16191d, 0.015);
+        R.clearScene(0x16191d, 0.015, { exposure: 1.45, bloom: 0.32, saturation: 1.12 });
         gs.webgl.cameraMode = 'room_25d';
 
         gs.player.x = 520;

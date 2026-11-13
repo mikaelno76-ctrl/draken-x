@@ -165,7 +165,7 @@ window.Characters = (function () {
     // Skapa en figur
     // ------------------------------------------------------------------
     function create(R, id, style = {}) {
-        const kind = id === 'mamma' ? 'woman' : id === 'polis' ? 'cop' : 'teen';
+        const kind = id === 'mamma' ? 'woman' : id === 'polis' ? 'cop' : id.indexOf('merc') === 0 ? 'merc' : 'teen';
         const sc = style.shoulderScale || 1.0;
         const hs = style.heightScale || 1.0;
         const jawW = style.jawWidth || 0.95;
@@ -302,7 +302,7 @@ window.Characters = (function () {
             return [0.26, 0.18];
         };
 
-        if (kind === 'teen' || kind === 'cop') {
+        if (kind === 'teen' || kind === 'cop' || kind === 'merc') {
             // Framkant: placket + dragkedja (fastsatta i ytan)
             const plackMat = std(kind === 'cop' ? 0x0f1726 : 0x1b2a3c, { roughness: 0.7, rim: false });
             for (let yy = -0.34; yy <= 0.31; yy += 0.05) {
@@ -473,6 +473,7 @@ window.Characters = (function () {
         const eyes = [];
         const eyelids = [];
         const eyebrows = [];
+        let cigTip = null;
         const browMat = hair;
         [-1, 1].forEach((s, idx) => {
             const ex = s * 0.072, ey = 0.028;
@@ -561,6 +562,37 @@ window.Characters = (function () {
             const stache = ell(hair, 0.045, 0.014, 0.018);
             stache.position.set(0, mouthY + 0.025, mouthZ + 0.004);
             headGroup.add(stache);
+        } else if (kind === 'merc') {
+            hairDome(1.06, -0.5, 0.5);
+            // Basker i snedställd stil
+            const beret = ell(std(style.beretColor || 0x5a1f1a, { roughness: 0.9 }), 0.235, 0.075, 0.23, 22, 10);
+            beret.position.set(0.035, 0.205, -0.01);
+            beret.rotation.z = -0.22;
+            beret.rotation.x = -0.12;
+            outline(beret, 0.006);
+            hairGroup.add(beret);
+            // Mörka solglasögon
+            const gl = basic(0x070707);
+            [-1, 1].forEach(sx => {
+                const lens = ell(gl, 0.048, 0.034, 0.014, 12, 8);
+                lens.position.set(sx * 0.072, 0.028, skullZ(sx * 0.072, 0.028) + 0.03);
+                headGroup.add(lens);
+            });
+            const bridge = new T.Mesh(new T.BoxGeometry(0.05, 0.01, 0.01), gl);
+            bridge.position.set(0, 0.03, skullZ(0, 0.03) + 0.032);
+            headGroup.add(bridge);
+            // Mustasch
+            const stache = ell(hair, 0.05, 0.015, 0.02);
+            stache.position.set(0, mouthY + 0.03, mouthZ + 0.004);
+            headGroup.add(stache);
+            // Cigarett med glöd
+            const cig = new T.Mesh(new T.CylinderGeometry(0.0085, 0.0085, 0.075, 8), basic(0xf1ece0));
+            cig.rotation.set(Math.PI / 2 - 0.2, 0, 0.25);
+            cig.position.set(0.035, mouthY - 0.004, mouthZ + 0.035);
+            headGroup.add(cig);
+            cigTip = new T.Mesh(new T.SphereGeometry(0.0105, 8, 8), basic(0xff5a1a));
+            cigTip.position.set(0.045, mouthY - 0.016, mouthZ + 0.07);
+            headGroup.add(cigTip);
         } else if (kind === 'woman') {
             hairDome(1.08, -0.45, 0.52);
             const bun = ell(hair, 0.085, 0.085, 0.08);
@@ -598,6 +630,27 @@ window.Characters = (function () {
             }
         }
 
+        if (kind === 'merc') {
+            const rifle = new T.Group();
+            const wood = std(0x5a3a20, { roughness: 0.6 });
+            const steel = std(0x15171a, { roughness: 0.35, metalness: 0.8 });
+            const stock = new T.Mesh(new T.BoxGeometry(0.07, 0.09, 0.36), wood);
+            stock.position.z = -0.38;
+            const body = new T.Mesh(new T.BoxGeometry(0.06, 0.08, 0.3), steel);
+            body.position.z = -0.05;
+            const barrel = new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.55, 8), steel);
+            barrel.rotation.x = Math.PI / 2;
+            barrel.position.z = 0.36;
+            const mag = new T.Mesh(new T.BoxGeometry(0.05, 0.16, 0.06), steel);
+            mag.position.set(0, -0.11, -0.02);
+            mag.rotation.x = 0.25;
+            rifle.add(stock, body, barrel, mag);
+            rifle.position.set(0.12, 0.02, 0.2);
+            rifle.rotation.set(-0.15, -0.35, 0.95);
+            rifle.traverse(o => { if (o.isMesh) o.castShadow = true; });
+            torsoGroup.add(rifle);
+        }
+
         // ----- Träffyta för klick -----
         const hitbox = new T.Mesh(
             new T.BoxGeometry(0.85, 2.25, 0.65),
@@ -621,7 +674,7 @@ window.Characters = (function () {
         const actor = {
             id, kind, group, lower, upperBody, torsoGroup, headGroup,
             mouthMesh: mouthInner, upperLip, lowerLip, mouthBase: { y: mouthY, z: mouthZ },
-            eyes, eyelids, eyebrows, hairGroup, blob,
+            eyes, eyelids, eyebrows, hairGroup, blob, cigTip,
             leftLeg: legL, rightLeg: legR, leftArm: armL, rightArm: armR,
             hitbox,
             blinkOffset: Math.random() * 4.0,

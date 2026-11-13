@@ -78,8 +78,9 @@ window.Renderer = {
         this.clearScene();
     },
 
-    clearScene(fogColor = 0x101520, fogDensity = 0.015) {
+    clearScene(fogColor = 0x101520, fogDensity = 0.015, grade = null) {
         if (!this.scene) return;
+        if (window.PostFX) window.PostFX.setGrade(grade || {});
 
         while (this.roomGroup.children.length > 0) this.roomGroup.remove(this.roomGroup.children[0]);
         while (this.actorsGroup.children.length > 0) this.actorsGroup.remove(this.actorsGroup.children[0]);
@@ -130,37 +131,40 @@ window.Renderer = {
         mainSpot.castShadow = true;
         mainSpot.shadow.mapSize.width = 2048;
         mainSpot.shadow.mapSize.height = 2048;
-        mainSpot.shadow.camera.left = -15;
-        mainSpot.shadow.camera.right = 15;
-        mainSpot.shadow.camera.top = 10;
-        mainSpot.shadow.camera.bottom = -6;
+        mainSpot.shadow.camera.left = -11;
+        mainSpot.shadow.camera.right = 11;
+        mainSpot.shadow.camera.top = 8;
+        mainSpot.shadow.camera.bottom = -5;
+        mainSpot.shadow.radius = 3;
         mainSpot.shadow.camera.near = 0.5;
         mainSpot.shadow.camera.far = 28;
         mainSpot.shadow.bias = -0.0006;
         this.roomGroup.add(mainSpot);
 
         if (!options.openSky) {
-            const warmPoolLeft = new THREE.PointLight(0xffb85c, 0.75, 11.0, 1.6);
+            const warmPoolLeft = new THREE.PointLight(0xffb060, 0.42, 11.0, 1.6);
             warmPoolLeft.position.set(-3.2, 2.8, -0.8);
-            const warmPoolRight = new THREE.PointLight(0xffaa44, 0.80, 11.0, 1.6);
+            const warmPoolRight = new THREE.PointLight(0xffa850, 0.45, 11.0, 1.6);
             warmPoolRight.position.set(3.2, 2.8, -0.8);
             const frontActorFill = new THREE.DirectionalLight(0xfff4e0, 0.38);
             frontActorFill.position.set(0, 3.5, 8.0);
             this.roomGroup.add(warmPoolLeft, warmPoolRight, frontActorFill);
         }
 
-        const floorMat = new THREE.MeshStandardMaterial({
+        const floorMat = this._floorMaterial ? this._floorMaterial(options) : new THREE.MeshStandardMaterial({
             color: options.woodFloor ? 0xffffff : floorColor,
             map: options.woodFloor ? this.proceduralTextures.wood : null,
             bumpMap: options.woodFloor ? this.proceduralTextures.wood : null,
             bumpScale: 0.012,
-            roughness: options.roughness || 0.42,
-            metalness: 0.06
+            roughness: options.roughness || 0.58,
+            metalness: 0.04
         });
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(28, 12), floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         this.roomGroup.add(floor);
+
+        if (!options.openSky && this._addRoomShading) this._addRoomShading(options);
 
         if (!options.openSky) {
             let wallTex = null;
@@ -493,6 +497,7 @@ window.Renderer = {
         if (!this.renderer || !this.scene || !this.camera) return;
 
         const elapsed = this.clock.getElapsedTime();
+        if (this.updateAtmosphere) this.updateAtmosphere(elapsed);
         this._lastDt = Math.min(0.1, Math.max(0.001, elapsed - (this._prevElapsed !== undefined ? this._prevElapsed : elapsed - 0.016)));
         this._prevElapsed = elapsed;
         const gs = window.GameState;

@@ -16,7 +16,7 @@ window.Engine.registerScene('scene1_boyroom', {
         const gs = window.GameState;
         if (!R || !gs) return;
 
-        R.clearScene(0x181c22, 0.012);
+        R.clearScene(0x181c22, 0.012, { exposure: 1.2, bloom: 0.2, highTint: [1.04, 1.0, 0.93] });
         gs.webgl.cameraMode = 'room_25d';
 
         gs.player.x = 520;

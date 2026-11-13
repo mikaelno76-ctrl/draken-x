@@ -33,11 +33,11 @@ window.PostFX = {
     target: null,
 
     DEFAULT_GRADE: {
-        exposure: 2.0,
-        bloom: 0.55,
-        bloomThreshold: 0.95,
-        saturation: 1.08,
-        contrast: 1.07,
+        exposure: 1.6,
+        bloom: 0.30,
+        bloomThreshold: 1.15,
+        saturation: 1.10,
+        contrast: 1.08,
         vignette: 0.30,
         grain: 0.030,
         aberration: 0.0022,

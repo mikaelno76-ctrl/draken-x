@@ -59,6 +59,7 @@ window.Engine = {
         if (typeof sceneDef.init === 'function') {
             sceneDef.init();
         }
+        if (window.Renderer && window.Renderer.finalizeScene) window.Renderer.finalizeScene(sceneId);
 
         if (!isInitialBoot && window.AudioEngine) {
             window.AudioEngine.startAmbience(sceneId);
@@ -358,6 +359,7 @@ window.Engine = {
         window.Renderer.clearScene(0x141a24, 0.02);
         window.Renderer.buildStandardRoom({ wallColor: 0x2c3e50, floorColor: 0x34495e });
         window.Renderer.spawnMainActors(true);
+        if (window.Renderer.finalizeScene) window.Renderer.finalizeScene(sceneId);
         window.VoiceEngine.speak('lasse', `Scenmodulen "${sceneId}" väntar på att levereras!`);
     }
 };
