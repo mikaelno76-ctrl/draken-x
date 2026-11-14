@@ -50,6 +50,7 @@ window.Engine.registerScene('scene2_gate', {
         this._buildGuardBoothAndThermos(R);
         this._buildSparkingAlarmBoxAndVent(R, gs);
         this._buildPoliceAndBultenCars(R, gs);
+        this._buildSignpost(R);
 
         R.spawnMainActors(true);
     },
@@ -139,6 +140,31 @@ window.Engine.registerScene('scene2_gate', {
         const distantHangar = new THREE.Mesh(new THREE.BoxGeometry(14, 3.8, 1.5), skySilMat);
         distantHangar.position.set(3.5, 1.9, -7.5);
         R.roomGroup.add(distantHangar);
+    },
+
+    // Vägvisare till de nya miljöerna (Shell-macken och centrum)
+    _buildSignpost(R) {
+        const mkSign = (text, y, id, name, rot) => {
+            const tex = document.createElement('canvas');
+            tex.width = 512; tex.height = 160;
+            const g = tex.getContext('2d');
+            g.fillStyle = '#1d4e89'; g.fillRect(0, 0, 512, 160);
+            g.strokeStyle = '#ffffff'; g.lineWidth = 8; g.strokeRect(8, 8, 496, 144);
+            g.fillStyle = '#ffffff'; g.font = 'bold 46px Oswald, Impact, sans-serif';
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            text.split('\n').forEach((l, i, a) => g.fillText(l, 256, 80 + (i - (a.length - 1) / 2) * 52));
+            const m = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.55),
+                new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(tex), fog: false }));
+            m.position.set(3.2, y, 0.9);
+            R.roomGroup.add(m);
+            R.registerInteractive(m, { id, name, walkX: 940, walkY: 650, lookAt: rot });
+        };
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.5, 8),
+            new THREE.MeshStandardMaterial({ color: 0x666c74, metalness: 0.4, roughness: 0.5 }));
+        pole.position.set(3.2, 1.25, 0.85);
+        R.roomGroup.add(pole);
+        mkSign('← SHELL-\nMACKEN', 2.15, 'vagvisare_shell', 'Vägvisare: Shell-macken', 'left');
+        mkSign('LINKÖPING C →\nSTORA TORGET', 1.5, 'vagvisare_centrum', 'Vägvisare: centrum', 'right');
     },
 
     _buildShellStationCorner(R) {
@@ -485,6 +511,12 @@ window.Engine.registerScene('scene2_gate', {
         const A = window.AudioEngine;
 
         switch (hotspotId) {
+            case 'vagvisare_shell':
+                window.GoTo('scene2_shell', 'left');
+                return true;
+            case 'vagvisare_centrum':
+                window.GoTo('scene2_centrum', 'left');
+                return true;
             case 'shell_mack':
                 V.speakSequence([
                     {
