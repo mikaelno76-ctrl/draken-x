@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Draken X — Bryssel 1961: DAG över slottet</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;background:#090d1a;color:#fff;font-family:Georgia,serif;height:100%;overflow:hidden}
+#stage{position:relative;width:100%;height:100dvh;min-height:440px;overflow:hidden;background:linear-gradient(#101b38 0%,#495775 35%,#d99c77 68%,#e9bd8c 100%)}
+#stage:before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 72% 35%,#ffe6a48c,transparent 43%);pointer-events:none}
+#sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#palace{position:absolute;bottom:13%;left:5%;width:90%;height:36%;filter:drop-shadow(0 -8px 16px #24243866);opacity:.94}
+#palace .roof{height:17%;background:linear-gradient(#5e5760,#3c3a49);clip-path:polygon(0 100%,5% 45%,27% 45%,30% 0,70% 0,73% 45%,95% 45%,100% 100%)}
+#palace .front{height:83%;background:repeating-linear-gradient(90deg,#d7b89d 0 5%,#927b78 5.3% 5.8%,#d8b99e 6% 12%);border-top:10px solid #cdb69d;box-shadow:inset 0 -20px 25px #312b3e88}
+#palace .front:before{content:"";display:block;position:relative;top:20%;left:15%;width:70%;height:70%;background:repeating-linear-gradient(90deg,transparent 0 8%,#3c4351 8.5% 11%,transparent 11.5% 20%);opacity:.85}
+#plaza{position:absolute;bottom:0;height:16%;width:100%;background:linear-gradient(#383d51,#151c2c)}
+#people{position:absolute;bottom:9%;width:100%;height:32%;display:flex;align-items:end;justify-content:center;gap:min(4vw,35px)}
+.person{position:relative;width:clamp(34px,6vw,72px);height:72%;background:#182035;border-radius:45% 45% 8% 8%;filter:drop-shadow(4px 5px 5px #0005)}
+.person:before{content:"";position:absolute;left:18%;top:-23%;width:64%;height:32%;border-radius:50%;background:#c99b81}
+.person:nth-child(2){height:67%;background:#693d57}.person:nth-child(3){height:58%;background:#46333a}
+.person:nth-child(3):after{content:"";position:absolute;top:-16%;left:-25%;width:150%;height:20%;border-radius:50%;background:#55414a}
+#veil{position:absolute;inset:0;background:#070b17;opacity:0;transition:opacity 1.8s;pointer-events:none}
+#titlecard{position:absolute;top:8%;width:100%;text-align:center;letter-spacing:.22em;text-transform:uppercase;font:clamp(13px,2vw,22px) Georgia,serif;text-shadow:0 2px 12px #000a}
+#titlecard strong{display:block;font-size:clamp(23px,5vw,57px);letter-spacing:.08em;margin-top:12px}
+#subtitle{position:absolute;bottom:5%;left:50%;transform:translateX(-50%);width:min(94%,850px);min-height:110px;padding:19px 22px 24px;background:linear-gradient(90deg,#0c1326eb,#17233ae6);border:1px solid #e8d5b44f;border-radius:9px;text-align:center;box-shadow:0 10px 35px #0009}
+#speaker{font:600 12px system-ui,sans-serif;color:#e5c797;letter-spacing:.22em;text-transform:uppercase;margin-bottom:9px}
+#dialogue{font-size:clamp(16px,2.7vw,25px);line-height:1.35}
+#controls{position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:5}
+button{border:1px solid #d8c6a877;color:#fff;background:#0a1527c9;padding:10px 12px;border-radius:6px;cursor:pointer;font:12px system-ui,sans-serif}
+button:hover{background:#34415c}
+#start{position:absolute;inset:0;background:#0b1221ef;display:grid;place-items:center;z-index:10;text-align:center;padding:25px}
+#start h1{font-size:clamp(30px,7vw,75px);margin:0 0 14px}#start p{max-width:580px;line-height:1.6;color:#ddd0bc}
+#start button{font-size:17px;padding:16px 32px;background:#795c40}
+#progress{position:absolute;bottom:0;height:3px;background:#e7c28b;width:0;z-index:7;transition:width .25s}
+#ending{position:absolute;inset:0;display:none;place-items:center;text-align:center;background:#0b1221e8;padding:20px;z-index:6}
+#ending h2{font-size:clamp(32px,7vw,70px);margin:0 0 18px}
+#ending p{font-size:clamp(17px,3vw,24px);line-height:1.6;max-width:680px}
+#ending button{font-size:16px;padding:14px 26px}
+#hint{position:absolute;bottom:calc(5% + 120px);left:50%;transform:translateX(-50%);font:11px system-ui,sans-serif;opacity:.75;white-space:nowrap}
+@media(max-height:620px){#subtitle{min-height:90px;bottom:2%;padding:12px 14px}#hint{display:none}#people{bottom:12%;height:28%}}
+</style></head>
+<body><main id="stage" aria-label="Animerad filmsekvens Bryssel 1961">
+<canvas id="sky"></canvas>
+<div id="palace"><div class="roof"></div><div class="front"></div></div><div id="plaza"></div>
+<div id="people"><div class="person"></div><div class="person"></div><div class="person"></div></div>
+<div id="veil"></div><div id="titlecard">Draken X <strong>BRYSSEL · 1961</strong></div>
+<div id="controls"><button id="pause">Pausa</button><button id="next">Nästa replik ›</button><button id="restart">Börja om</button></div>
+<div id="hint">Klicka på ”Nästa replik” för att styra tempot</div>
+<section id="subtitle" aria-live="polite"><div id="speaker"></div><div id="dialogue"></div></section>
+<div id="progress"></div>
+<section id="start"><div><div style="letter-spacing:.35em;color:#e9c89e">DRAKEN X · EN FILMSEKVENS</div><h1>DAG över slottet</h1><p>Bryssel, hösten 1961. Två människor talar om en framtid som den ene har slutat tro på. Högt ovanför dem närmar sig ett flygplan.</p><button id="play">Spela scenen</button><p style="font:12px system-ui,sans-serif">Cirka 4 minuter · text, animerad himmel och valfri webbläsarröst · fungerar utan internet</p></div></section>
+<section id="ending"><div><div style="letter-spacing:.3em;color:#e9c89e">TILL MINNE AV DAG HAMMARSKJÖLD</div><h2>Det finns fortfarande hopp.</h2><p>Och ibland behövs bara två pojkar från Linköping för att påminna världen om det.</p><button id="again">Se scenen igen</button></div></section>
+</main>
+<script>
+'use strict';
+const lines=[
+{who:'BERÄTTAREN',say:'Bryssel. En höstkväll 1961. Framför det kungliga slottet går två människor långsamt genom det sista solljuset.',sec:9},
+{who:'ÉLISE',say:'Du talar alltid om framtiden som om den redan vore förlorad.',sec:6},
+{who:'THOMAS',say:'Jag har sett för många människor lova fred på förmiddagen och sälja vapen på eftermiddagen.',sec:8},
+{who:'ÉLISE',say:'Och ändå fortsätter du arbeta för dem.',sec:5},
+{who:'THOMAS',say:'Någon måste försöka hindra dem från att skjuta varandra före middagen.',sec:7},
+{who:'ÉLISE',say:'Du kan inte leva hela ditt liv med att vänta på nästa katastrof, Thomas.',sec:7},
+{who:'THOMAS',say:'Det är kanske det enda jag blivit riktigt bra på.',sec:6},
+{who:'BERÄTTAREN',say:'Då kommer ljudet. Först ett avlägset muller. Sedan ett dån som får fönsterrutorna att skallra.',sec:8,event:'jet'},
+{who:'ÉLISE',say:'Thomas ... vad är det där?',sec:5},
+{who:'BERÄTTAREN',say:'Ett silverglänsande flygplan sveper över slottets tak, stiger mot kvällssolen och lämnar en vit linje bakom sig.',sec:9,event:'draw'},
+{who:'BERÄTTAREN',say:'En bokstav. Sedan ännu en. Och till sist den tredje. Över Bryssel står ett namn skrivet i himlen.',sec:9},
+{who:'FOLKMASSAN',say:'DAG.',sec:7},
+{who:'THOMAS',say:'Dag Hammarskjöld.',sec:6},
+{who:'THOMAS',say:'Jag har suttit i rum där män med världskartor framför sig har förklarat varför det inte går att göra det rätta.',sec:10},
+{who:'THOMAS',say:'Varför vi måste vänta. Varför vi måste kompromissa. Varför någon annan alltid måste betala priset.',sec:9},
+{who:'THOMAS',say:'Och där uppe sitter två pojkar som inte ens har hunnit bli gamla nog att rösta.',sec:9},
+{who:'BERÄTTAREN',say:'Han ser på de vita bokstäverna. För första gången på många år har han inga ord kvar att gömma sig bakom.',sec:9},
+{who:'THOMAS',say:'Jag har varit rädd för morgondagen så länge jag kan minnas.',sec:7},
+{who:'THOMAS',say:'Men när jag ser det här ... då vill jag plötsligt veta hur framtiden kommer att bli.',sec:10},
+{who:'ÉLISE',say:'Det vill jag också.',sec:6},
+{who:'BERÄTTAREN',say:'Thomas tar hennes händer. Han ser på henne, och för första gången ser han inte ut som en man som redan har förlorat.',sec:9},
+{who:'THOMAS',say:'Då vill jag möta den tillsammans med dig. Élise ... vill du gifta dig med mig?',sec:11,event:'kneel'},
+{who:'ÉLISE',say:'Ja. Ja, Thomas. Naturligtvis vill jag det!',sec:9},
+{who:'THOMAS',say:'Jag ... jag har ingen ring.',sec:6},
+{who:'DEN ÄLDRE DAMEN',say:'Då får ni ta den här, unge man.',sec:7},
+{who:'THOMAS',say:'Madame, jag kan omöjligen ta emot ...',sec:6},
+{who:'DEN ÄLDRE DAMEN',say:'Naturligtvis kan ni. Jag har fler.',sec:7},
+{who:'DEN ÄLDRE DAMEN',say:'Men en sådan här dag får man kanske bara en gång i livet.',sec:9},
+{who:'BERÄTTAREN',say:'Thomas trär ringen på Élises finger. Runt dem börjar människor applådera. Ingen av dem ser längre upp mot flygplanet.',sec:10},
+{who:'BERÄTTAREN',say:'De ser bara på varandra. Och högt över det kungliga slottet svävar ännu tre vita bokstäver.',sec:10},
+{who:'BERÄTTAREN',say:'DAG.',sec:9,event:'final'}
+];
+const $=id=>document.getElementById(id);
+let idx=-1,paused=false,timer=null,started=false,drawStart=0,jetStart=0,mode='',speechOn=false;
+const cvs=$('sky'),ctx=cvs.getContext('2d');let w=0,h=0,clouds=[];
+function resize(){w=cvs.width=innerWidth*devicePixelRatio;h=cvs.height=innerHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);w=innerWidth;h=innerHeight}
+addEventListener('resize',resize);resize();
+function puff(x,y,r,a=1){let g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba(255,252,238,'+a*.83+')');g.addColorStop(.55,'rgba(246,243,234,'+a*.42+')');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill()}
+function letterPath(c,t){const W=w,H=h,scale=Math.min(W/900,H/620,1.25),sx=W/2-175*scale,sy=H*.26;
+ const glyphs={
+ D:[[0,0],[0,120],[0,0],[34,0],[55,10],[65,35],[65,85],[55,110],[34,120],[0,120]],
+ A:[[0,120],[34,0],[68,120],[53,75],[15,75]],
+ G:[[65,20],[45,0],[15,0],[0,25],[0,95],[15,120],[50,120],[65,105],[65,72],[35,72]]
+ };
+ let pts=glyphs[c],segments=[],total=0;for(let i=1;i<pts.length;i++){let a=pts[i-1],b=pts[i],len=Math.hypot(b[0]-a[0],b[1]-a[1]);segments.push([a,b,len]);total+=len}
+ let d=t*total;for(const [a,b,len] of segments){if(d<=0)break;let n=Math.min(1,d/len);for(let q=0;q<=n;q+=.06){let x=sx+([0,1,2].indexOf('DAG'.indexOf(c))*0+('DAG'.indexOf(c))*115+a[0]+(b[0]-a[0])*q)*scale;let y=sy+(a[1]+(b[1]-a[1])*q)*scale;puff(x,y,13*scale,Math.min(1,(drawStart?performance.now()-drawStart:0)/2000)*.9)}d-=len}
+}
+function frame(now){ctx.clearRect(0,0,w,h);for(let i=0;i<9;i++){let x=((i*197+now*.003*(i%3+1))%(w+260))-130,y=h*(.1+(i%4)*.095);puff(x,y,65+(i%3)*25,.06)}
+ if(jetStart){let t=(now-jetStart)/1000;if(t<8){let x=-w*.1+t*w*.16,y=h*.52-Math.sin(t*.38)*h*.26;ctx.save();ctx.translate(x,y);ctx.rotate(-.24);ctx.fillStyle='#dbe3e6';ctx.beginPath();ctx.moveTo(30,0);ctx.lineTo(-25,-6);ctx.lineTo(-10,0);ctx.lineTo(-25,6);ctx.closePath();ctx.fill();ctx.restore();for(let i=0;i<3;i++)puff(x-25-i*16,y+i*3,10+i*6,.3)}}
+ if(drawStart){let t=Math.min(1,(now-drawStart)/11000);let each=t*3;['D','A','G'].forEach((c,i)=>letterPath(c,Math.max(0,Math.min(1,each-i))))}
+ requestAnimationFrame(frame)}requestAnimationFrame(frame);
+function speak(line){if(!speechOn||!('speechSynthesis' in window)||line.who==='BERÄTTAREN')return;try{speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(line.say);u.lang='sv-SE';u.rate=.88;u.pitch=line.who==='ÉLISE'?1.2:line.who==='THOMAS'?.88:1;speechSynthesis.speak(u)}catch(e){}}
+function next(){clearTimeout(timer);if(idx>=lines.length-1){end();return}idx++;const l=lines[idx];$('speaker').textContent=l.who;$('dialogue').textContent=l.say;$('progress').style.width=((idx+1)/lines.length*100)+'%';if(l.event==='jet'){jetStart=performance.now()}if(l.event==='draw'){drawStart=performance.now()}if(l.event==='kneel'){$('people').children[0].style.transform='translateY(22px) scaleY(.65)'}if(l.event==='final'){$('veil').style.opacity='.65'}speak(l);if(!paused)timer=setTimeout(next,l.sec*1000)}
+function end(){clearTimeout(timer);if('speechSynthesis' in window)speechSynthesis.cancel();$('ending').style.display='grid'}
+function begin(){clearTimeout(timer);if('speechSynthesis' in window)speechSynthesis.cancel();idx=-1;paused=false;jetStart=0;drawStart=0;$('veil').style.opacity=0;$('ending').style.display='none';$('start').style.display='none';$('people').children[0].style.transform='';$('pause').textContent='Pausa';started=true;next()}
+$('play').onclick=begin;$('again').onclick=begin;$('restart').onclick=begin;$('next').onclick=()=>{if(!started)begin();else next()};
+$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'Fortsätt':'Pausa';clearTimeout(timer);if(!paused)timer=setTimeout(next,4000)};
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();if(started)next()}});
+</script></body></html>
